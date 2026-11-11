@@ -1,0 +1,27 @@
+# =============================================================
+# Sistema de Gestion de Calificaciones Academicas - Backend
+# Configuracion general (perfil por defecto, desarrollo)
+# =============================================================
+
+spring:
+  application:
+    name: sistema-evaluacion
+
+  # No mostrar campos nulos en las respuestas JSON
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+
+# Actuator: solo health e info expuestos
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# Swagger UI (habilitado en desarrollo; se restringira en perfiles no desarrolladores)
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
