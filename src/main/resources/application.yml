@@ -7,6 +7,25 @@ spring:
   application:
     name: sistema-evaluacion
 
+  # -------------------------------------------------------------------
+  # Base de datos Oracle 26ai Free (Etapa 2)
+  # Los valores REALES se toman de variables de entorno (DB_URL,
+  # DB_USER, DB_PASSWORD) o del archivo application-local.yml (perfil
+  # "local", excluido de Git). Nunca escribir credenciales aqui.
+  # -------------------------------------------------------------------
+  datasource:
+    url: ${DB_URL:}
+    username: ${DB_USER:}
+    password: ${DB_PASSWORD:}
+    driver-class-name: oracle.jdbc.OracleDriver
+
+  # JPA en modo "none": Hibernate NUNCA crea ni modifica tablas.
+  # La estructura de la base es responsabilidad del script DDL aprobado.
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
   # No mostrar campos nulos en las respuestas JSON
   jackson:
     default-property-inclusion: non_null

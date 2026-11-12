@@ -1,0 +1,16 @@
+# =============================================================
+# Configuracion del perfil "test" (solo pruebas automatizadas).
+#
+# Las pruebas unitarias NO dependen de la base de datos: se excluye
+# la autoconfiguracion de JDBC, JPA/Hibernate y repositorios.
+# Las pruebas de integracion contra Oracle real se agregaran mas
+# adelante con el perfil "local".
+#
+# Nombres de clases verificados en Spring Boot 4.1.2 (jars locales).
+# =============================================================
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
+      - org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration

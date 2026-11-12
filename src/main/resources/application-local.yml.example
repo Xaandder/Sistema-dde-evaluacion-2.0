@@ -2,17 +2,19 @@
 # PLANTILLA de configuracion local (perfil "local").
 #
 # INSTRUCCIONES:
-#   1. Copia este archivo como "application-local.yml".
-#   2. Completa los valores de tu equipo.
-#   3. NUNCA subas application-local.yml a Git:
-#      ya esta excluido en .gitignore.
+#   1. Copia este archivo como "application-local.yml" en la misma
+#      carpeta (src/main/resources).
+#   2. Completa la contrasena real (solo tu la conoces).
+#   3. NUNCA subas application-local.yml a Git: ya esta excluido
+#      en .gitignore.
 #
-# Alternativa: define las variables de entorno DB_URL, DB_USER
-# y DB_PASSWORD en tu terminal y no copies nada aqui.
+# Alternativa: en lugar de este archivo, define las variables de
+# entorno DB_URL, DB_USER y DB_PASSWORD en tu terminal.
 # =============================================================
 
-# spring:
-#   datasource:
-#     url: ${DB_URL}          # Ej: jdbc:oracle:thin:@//localhost:1521/FREE
-#     username: ${DB_USER}    # Usuario de la aplicacion (nunca en texto plano)
-#     password: ${DB_PASSWORD} # Contraseña (nunca en texto plano)
+spring:
+  datasource:
+    # Servicio FREEPDB1 confirmado por el usuario (base enchufable de Oracle Free)
+    url: jdbc:oracle:thin:@//192.168.1.17:1521/FREEPDB1
+    username: SISTEMA_EVALUACION
+    password: ESCRIBE-AQUI-TU-CONTRASENA
