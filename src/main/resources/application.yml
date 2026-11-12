@@ -19,11 +19,11 @@ spring:
     password: ${DB_PASSWORD:}
     driver-class-name: oracle.jdbc.OracleDriver
 
-  # JPA en modo "none": Hibernate NUNCA crea ni modifica tablas.
-  # La estructura de la base es responsabilidad del script DDL aprobado.
+  # JPA en modo "validate": Hibernate solo VERIFICA contra la base;
+  # NUNCA crea ni modifica tablas (Etapa 2-final, regla del proyecto).
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     open-in-view: false
 
   # No mostrar campos nulos en las respuestas JSON
@@ -34,11 +34,16 @@ server:
   port: 8080
 
 # Actuator: solo health e info expuestos
+# show-components: permite ver los componentes de salud (ej. "db")
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
 
 # Swagger UI (habilitado en desarrollo; se restringira en perfiles no desarrolladores)
 springdoc:
