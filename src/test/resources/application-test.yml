@@ -14,3 +14,9 @@ spring:
       - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
       - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
       - org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration
+
+# Valores de JWT SOLO para pruebas (no son credenciales reales).
+app:
+  jwt:
+    secreto: CLAVE-DE-PRUEBAS-EXCLUSIVA-PERFIL-TEST-32CH
+    ttl-minutos: 60

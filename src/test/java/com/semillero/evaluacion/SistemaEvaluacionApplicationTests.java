@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -20,6 +22,14 @@ class SistemaEvaluacionApplicationTests {
     @Autowired
     private MockMvc mockMvc;
 
+    /** Los repositorios JPA no existen en el perfil de pruebas (sin Oracle). */
+    @MockitoBean
+    private com.semillero.evaluacion.usuarios.UsuarioRepositorio usuariosRepositorio;
+
+    /** Los repositorios JPA no existen en el perfil de pruebas (sin Oracle). */
+    @MockitoBean
+    private com.semillero.evaluacion.auditoria.AuditoriaRepositorio auditoriaRepositorio;
+
     /** La aplicacion debe iniciar con todos sus componentes sin errores. */
     @Test
     @DisplayName("El contexto de la aplicacion se levanta correctamente")
@@ -29,6 +39,7 @@ class SistemaEvaluacionApplicationTests {
     /** Verifica que toda ruta desconocida devuelva el formato uniforme ApiError con 404. */
     @Test
     @DisplayName("Una ruta inexistente devuelve 404 con el formato uniforme ApiError")
+    @WithMockUser
     void rutaInexistenteDevuelveFormatoApiError() throws Exception {
         mockMvc.perform(get("/ruta-inexistente"))
                 .andExpect(status().isNotFound())

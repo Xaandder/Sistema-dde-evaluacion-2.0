@@ -49,3 +49,14 @@ management:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+# -------------------------------------------------------------------
+# Seguridad (Etapa 3): JWT
+# El secreto NUNCA se escribe en el repositorio: se toma de la variable
+# de entorno JWT_SECRET (minimo 32 caracteres, sin valores por defecto).
+# TTL configurable (480 min = 8 horas, decision aprobada).
+# -------------------------------------------------------------------
+app:
+  jwt:
+    secreto: ${JWT_SECRET:}
+    ttl-minutos: ${JWT_TTL_MINUTOS:480}

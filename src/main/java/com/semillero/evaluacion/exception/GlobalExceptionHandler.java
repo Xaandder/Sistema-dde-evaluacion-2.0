@@ -1,5 +1,8 @@
 package com.semillero.evaluacion.exception;
 
+import com.semillero.evaluacion.exception.CredencialesInvalidasException;
+import com.semillero.evaluacion.exception.CuentaInactivaException;
+import com.semillero.evaluacion.exception.ReglaNegocioException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
@@ -8,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -61,6 +65,34 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiError> manejarTipoIncorrecto(
             MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
         return construir(HttpStatus.BAD_REQUEST, "Un parametro tiene un tipo de dato incorrecto", request, null);
+    }
+
+    /** Credenciales invalidas (login o cambio de contrasena). */
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    ResponseEntity<ApiError> manejarCredencialesInvalidas(
+            CredencialesInvalidasException ex, HttpServletRequest request) {
+        return construir(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, null);
+    }
+
+    /** Cuenta desactivada (ACTIVO = 0). */
+    @ExceptionHandler(CuentaInactivaException.class)
+    ResponseEntity<ApiError> manejarCuentaInactiva(
+            CuentaInactivaException ex, HttpServletRequest request) {
+        return construir(HttpStatus.FORBIDDEN, ex.getMessage(), request, null);
+    }
+
+    /** Violacion de regla de negocio con mensaje para el cliente. */
+    @ExceptionHandler(ReglaNegocioException.class)
+    ResponseEntity<ApiError> manejarReglaNegocio(
+            ReglaNegocioException ex, HttpServletRequest request) {
+        return construir(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
+    }
+
+    /** Token valido pero rol insuficiente (seguridad de metodo). */
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ApiError> manejarAccesoDenegado(
+            AccessDeniedException ex, HttpServletRequest request) {
+        return construir(HttpStatus.FORBIDDEN, "Acceso denegado: no tiene el rol requerido", request, null);
     }
 
     /** Ruta inexistente en la API. */
