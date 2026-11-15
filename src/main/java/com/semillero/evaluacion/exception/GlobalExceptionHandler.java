@@ -2,6 +2,7 @@ package com.semillero.evaluacion.exception;
 
 import com.semillero.evaluacion.exception.CredencialesInvalidasException;
 import com.semillero.evaluacion.exception.CuentaInactivaException;
+import com.semillero.evaluacion.exception.RecursoNoEncontradoException;
 import com.semillero.evaluacion.exception.ReglaNegocioException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -86,6 +87,13 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiError> manejarReglaNegocio(
             ReglaNegocioException ex, HttpServletRequest request) {
         return construir(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
+    }
+
+    /** Recurso solicitado inexistente (ids de rutas que no estan en la base). */
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    ResponseEntity<ApiError> manejarRecursoNoEncontrado(
+            RecursoNoEncontradoException ex, HttpServletRequest request) {
+        return construir(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
 
     /** Token valido pero rol insuficiente (seguridad de metodo). */
