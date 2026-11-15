@@ -3,6 +3,7 @@ package com.semillero.evaluacion.soporte;
 import com.semillero.evaluacion.anios.AnioRepositorio;
 import com.semillero.evaluacion.asignaciones.AsignacionRepositorio;
 import com.semillero.evaluacion.auditoria.AuditoriaRepositorio;
+import com.semillero.evaluacion.calificaciones.CalificacionRepositorio;
 import com.semillero.evaluacion.estudiantes.EstudianteRepositorio;
 import com.semillero.evaluacion.grupos.GrupoRepositorio;
 import com.semillero.evaluacion.materias.MateriaRepositorio;
@@ -53,4 +54,7 @@ public abstract class ContextoPruebas {
 
     @MockitoBean
     protected AsignacionRepositorio asignaciones;
+
+    @MockitoBean
+    protected CalificacionRepositorio calificaciones;
 }
