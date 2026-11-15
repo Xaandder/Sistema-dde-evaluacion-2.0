@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,6 +16,7 @@ import com.semillero.evaluacion.auditoria.AuditoriaServicio;
 import com.semillero.evaluacion.usuarios.Rol;
 import com.semillero.evaluacion.usuarios.Usuario;
 import com.semillero.evaluacion.usuarios.UsuarioRepositorio;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +40,11 @@ class AdminBootstrapTests {
     private final PasswordEncoder encoder = new BCryptPasswordEncoder();
 
     private AdminBootstrap bootstrap(String usuario, String contrasena) {
-        return new AdminBootstrap(usuarios, encoder, auditoria, usuario, contrasena);
+        return new AdminBootstrap(usuarios, encoder, auditoria, usuario, contrasena, false);
+    }
+
+    private AdminBootstrap bootstrapConReset(String usuario, String contrasena) {
+        return new AdminBootstrap(usuarios, encoder, auditoria, usuario, contrasena, true);
     }
 
     @Test
@@ -81,5 +87,40 @@ class AdminBootstrapTests {
         assertTrue(encoder.matches("Temporal123", guardado.getContrasenaHash()));
         verify(auditoria).registrar(eq("CREAR"), eq("USUARIOS"), eq("AdminUnico"),
                 any(), any(), eq("127.0.0.1"));
+    }
+
+    @Test
+    @DisplayName("Con ADMIN_BOOTSTRAP_RESET=true, restablece solo al administrador configurado y audita")
+    void resetRestableceAlAdministradorConfigurado() {
+        when(usuarios.countByRol(Rol.ADMINISTRADOR)).thenReturn(1L);
+        Usuario existente = new Usuario();
+        existente.setUsuario("AdminUnico");
+        existente.setRol(Rol.ADMINISTRADOR);
+        when(usuarios.findByUsuarioAndRol("AdminUnico", Rol.ADMINISTRADOR))
+                .thenReturn(Optional.of(existente));
+        when(usuarios.save(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        bootstrapConReset("AdminUnico", "Temporal123").crearAdministradorInicial();
+
+        verify(usuarios).save(captorUsuario.capture());
+        Usuario guardado = captorUsuario.getValue();
+        assertTrue(encoder.matches("Temporal123", guardado.getContrasenaHash()));
+        assertTrue(guardado.getActivo());
+        assertTrue(guardado.getCambioContrasenaPendiente());
+        verify(auditoria).registrar(eq("ACTUALIZAR"), eq("USUARIOS"), eq("AdminUnico"),
+                isNull(), any(), eq("127.0.0.1"));
+    }
+
+    @Test
+    @DisplayName("Con ADMIN_BOOTSTRAP_RESET=true pero usuario distinto, no restablece nada")
+    void resetNoTocaOtrosUsuarios() {
+        when(usuarios.countByRol(Rol.ADMINISTRADOR)).thenReturn(2L);
+        when(usuarios.findByUsuarioAndRol("OtroAdmin", Rol.ADMINISTRADOR))
+                .thenReturn(Optional.empty());
+
+        bootstrapConReset("OtroAdmin", "Temporal123").crearAdministradorInicial();
+
+        verify(usuarios, never()).save(any());
+        verify(auditoria, never()).registrar(any(), any(), any(), anyLong(), any(), any());
     }
 }

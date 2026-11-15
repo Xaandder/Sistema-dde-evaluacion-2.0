@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.semillero.evaluacion.soporte.ContextoPruebas;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,24 +12,15 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class SistemaEvaluacionApplicationTests {
+class SistemaEvaluacionApplicationTests extends ContextoPruebas {
 
     @Autowired
     private MockMvc mockMvc;
-
-    /** Los repositorios JPA no existen en el perfil de pruebas (sin Oracle). */
-    @MockitoBean
-    private com.semillero.evaluacion.usuarios.UsuarioRepositorio usuariosRepositorio;
-
-    /** Los repositorios JPA no existen en el perfil de pruebas (sin Oracle). */
-    @MockitoBean
-    private com.semillero.evaluacion.auditoria.AuditoriaRepositorio auditoriaRepositorio;
 
     /** La aplicacion debe iniciar con todos sus componentes sin errores. */
     @Test

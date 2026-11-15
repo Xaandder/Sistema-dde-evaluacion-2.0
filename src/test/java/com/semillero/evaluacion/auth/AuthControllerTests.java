@@ -5,11 +5,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.semillero.evaluacion.auditoria.AuditoriaRepositorio;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
 import com.semillero.evaluacion.seguridad.JwtService;
+import com.semillero.evaluacion.soporte.ContextoPruebas;
 import com.semillero.evaluacion.usuarios.Rol;
 import com.semillero.evaluacion.usuarios.Usuario;
-import com.semillero.evaluacion.usuarios.UsuarioRepositorio;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,11 +21,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-
-import static org.mockito.Mockito.when;
 
 /**
  * Pruebas de endpoints de autenticacion y de proteccion por rol, SIN Oracle
@@ -32,19 +31,13 @@ import static org.mockito.Mockito.when;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class AuthControllerTests {
+class AuthControllerTests extends ContextoPruebas {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private JwtService jwtService;
-
-    @MockitoBean
-    private UsuarioRepositorio usuarios;
-
-    @MockitoBean
-    private AuditoriaRepositorio auditoria;
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 

@@ -1,6 +1,7 @@
 package com.semillero.evaluacion.usuarios;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -10,6 +11,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.NumericBooleanConverter;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Entidad JPA de la tabla USUARIOS (mapa 1:1 con database/database_schema.sql,
@@ -40,10 +45,14 @@ public class Usuario {
     @Column(name = "ROL", nullable = false, length = 20)
     private Rol rol;
 
+    @JdbcTypeCode(SqlTypes.NUMERIC)
+    @Convert(converter = NumericBooleanConverter.class)
     @Column(name = "ACTIVO", nullable = false)
     private Boolean activo;
 
     /** true: la contrasena es temporal y debe cambiarse en el primer login. */
+    @JdbcTypeCode(SqlTypes.NUMERIC)
+    @Convert(converter = NumericBooleanConverter.class)
     @Column(name = "CAMBIO_CONTRASENA_PENDIENTE", nullable = false)
     private Boolean cambioContrasenaPendiente;
 

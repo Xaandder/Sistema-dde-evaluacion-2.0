@@ -12,9 +12,36 @@
 # entorno DB_URL, DB_USER y DB_PASSWORD en tu terminal.
 # =============================================================
 
+# NOTA SOBRE EL ADMINISTRADOR INICIAL (perfil local):
+#   - La contrasena configurada aqui es TEMPORAL: en el primer inicio
+#     de sesion el API obliga a cambiarla por una definitiva que
+#     combine letras y numeros (minimo 8 caracteres).
+#   - Restablecer la contrasena del administrador (por ejemplo, si se
+#     olvido) es un modo OPT-IN: se activa con la variable
+#     admin.bootstrap.reset=true (o ADMIN_BOOTSTRAP_RESET=true) en el
+#     arranque, SOLO afecta al usuario indicado en admin.bootstrap.usuario
+#     y queda auditado como ACTUALIZAR. Por defecto es false y jamas
+#     sobrescribe administradores existentes.
+
 spring:
   datasource:
     # Servicio FREEPDB1 confirmado por el usuario (base enchufable de Oracle Free)
     url: jdbc:oracle:thin:@//192.168.1.17:1521/FREEPDB1
     username: SISTEMA_EVALUACION
     password: ESCRIBE-AQUI-TU-CONTRASENA
+
+# JWT (Etapa 3): secreto de minimo 32 caracteres; nunca se sube al repositorio
+app:
+  jwt:
+    secreto: ESCRIBE-AQUI-EL-SECRETO-MINIMO-32-CARACTERES
+    ttl-minutos: 480
+
+# Administrador inicial (solo corre con perfil local y enabled=true)
+admin:
+  bootstrap:
+    enabled: true
+    usuario: admin
+    # Temporal: el primer inicio de sesion obliga a cambiarla
+    password: ESCRIBE-AQUI-LA-CONTRASENA-TEMPORAL
+    # Dejalo false (u omitelo); true SOLO para restablecer la contrasena
+    reset: false

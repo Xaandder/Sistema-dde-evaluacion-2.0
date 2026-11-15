@@ -12,5 +12,7 @@ public interface UsuarioRepositorio extends CrudRepository<Usuario, Long> {
 
     Optional<Usuario> findByUsuario(String usuario);
 
+    Optional<Usuario> findByUsuarioAndRol(String usuario, Rol rol);
+
     long countByRol(Rol rol);
 }
