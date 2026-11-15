@@ -2,8 +2,10 @@ package com.semillero.evaluacion.soporte;
 
 import com.semillero.evaluacion.anios.AnioRepositorio;
 import com.semillero.evaluacion.auditoria.AuditoriaRepositorio;
+import com.semillero.evaluacion.estudiantes.EstudianteRepositorio;
 import com.semillero.evaluacion.grupos.GrupoRepositorio;
 import com.semillero.evaluacion.materias.MateriaRepositorio;
+import com.semillero.evaluacion.matriculas.MatriculaRepositorio;
 import com.semillero.evaluacion.periodos.PeriodoRepositorio;
 import com.semillero.evaluacion.usuarios.UsuarioRepositorio;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -37,4 +39,10 @@ public abstract class ContextoPruebas {
 
     @MockitoBean
     protected GrupoRepositorio grupos;
+
+    @MockitoBean
+    protected EstudianteRepositorio estudiantes;
+
+    @MockitoBean
+    protected MatriculaRepositorio matriculas;
 }
