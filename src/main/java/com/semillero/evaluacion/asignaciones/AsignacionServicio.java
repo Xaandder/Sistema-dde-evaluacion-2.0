@@ -155,12 +155,13 @@ public class AsignacionServicio {
     /**
      * Consulta de asignaciones con filtros combinables: profesorId, grupoId,
      * anioId y materiaId. Si profesor y anio (o grupo y anio) vienen juntos
-     * se usa la consulta combinada del repositorio.
+     * se usa la consulta combinada del repositorio. El numero de anio
+     * lectivo SIEMPRE se resuelve en la respuesta, con UNA sola consulta
+     * batch de los anios distintos presentes en el resultado (sin N+1).
      */
     @Transactional(readOnly = true)
     public List<AsignacionRespuesta> listar(Long profesorId, Long grupoId,
             Long anioId, Long materiaId) {
-        Integer numeroAnio = anioId != null ? anioDe(anioId) : null;
         List<Asignacion> filas;
         if (profesorId != null && anioId != null) {
             filas = repositorio.findByProfesorIdAndAnioIdOrderByCreadoEnAsc(profesorId, anioId);
@@ -178,8 +179,11 @@ public class AsignacionServicio {
             filas = java.util.stream.StreamSupport
                     .stream(repositorio.findAll().spliterator(), false).toList();
         }
-        final Integer anioFinal = numeroAnio;
-        return filas.stream().map(a -> aRespuesta(a, anioFinal)).toList();
+
+        Map<Long, Integer> aniosPorId = numerosDeAnio(filas);
+        return filas.stream()
+                .map(a -> aRespuesta(a, aniosPorId.get(a.getAnioId())))
+                .toList();
     }
 
     /** Consulta de una asignacion por id. */
@@ -266,6 +270,25 @@ public class AsignacionServicio {
         return anios.findById(anioId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe el anio lectivo " + anioId)).getAnio();
+    }
+
+    /**
+     * Resuelve el numero de anio lectivo de TODAS las filas con una sola
+     * consulta (findAllById de los anios distintos presentes).
+     */
+    private Map<Long, Integer> numerosDeAnio(List<Asignacion> filas) {
+        List<Long> ids = filas.stream().map(Asignacion::getAnioId).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Integer> numeros = new java.util.HashMap<>();
+        anios.findAllById(ids).forEach(a -> numeros.put(a.getId(), a.getAnio()));
+        for (Long id : ids) {
+            if (!numeros.containsKey(id)) {
+                throw new RecursoNoEncontradoException("No existe el anio lectivo " + id);
+            }
+        }
+        return numeros;
     }
 
     private Asignacion buscarEntidad(Long id) {

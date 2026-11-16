@@ -30,6 +30,7 @@ import com.semillero.evaluacion.periodos.PeriodoRepositorio;
 import com.semillero.evaluacion.profesores.EstadoProfesor;
 import com.semillero.evaluacion.profesores.Profesor;
 import com.semillero.evaluacion.profesores.ProfesorRepositorio;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -320,5 +321,35 @@ class AsignacionServicioTests {
         when(repositorio.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(RecursoNoEncontradoException.class, () -> servicio.buscarPorId(99L));
+    }
+
+    @Test
+    @DisplayName("listar: el numero de anio aparece SIEMPRE (con o sin filtros), con una sola consulta batch")
+    void listarResuelveElAnio() {
+        Asignacion fila = asignacion(500L, 3L, EstadoAsignacion.ACTIVA);
+        when(anios.findAllById(List.of(5L)))
+                .thenReturn(List.of(anio(5L, 2026, EstadoAnio.ACTIVO)));
+
+        // Sin filtros: findAll().
+        when(repositorio.findAll()).thenReturn(List.of(fila));
+        List<AsignacionRespuesta> todas = servicio.listar(null, null, null, null);
+        assertEquals(1, todas.size());
+        assertEquals(2026, todas.get(0).anio());
+        verify(anios, Mockito.times(1)).findAllById(List.of(5L));
+        verify(anios, never()).findById(5L);
+
+        // Con filtro por profesor (sin anioId): tambien resuelve el anio.
+        when(repositorio.findByProfesorIdOrderByCreadoEnAsc(3L)).thenReturn(List.of(fila));
+        assertEquals(2026, servicio.listar(3L, null, null, null).get(0).anio());
+    }
+
+    @Test
+    @DisplayName("listar: anio lectivo inexistente entre los resultados -> 404")
+    void listarConAnioInexistente() {
+        when(repositorio.findAll()).thenReturn(List.of(asignacion(500L, 3L, EstadoAsignacion.ACTIVA)));
+        when(anios.findAllById(List.of(5L))).thenReturn(List.of());
+
+        assertThrows(RecursoNoEncontradoException.class,
+                () -> servicio.listar(null, null, null, null));
     }
 }

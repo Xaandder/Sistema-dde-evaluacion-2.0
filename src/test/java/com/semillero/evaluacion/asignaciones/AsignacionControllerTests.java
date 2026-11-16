@@ -75,6 +75,12 @@ class AsignacionControllerTests extends ContextoPruebas {
     void listarPorProfesor() throws Exception {
         when(asignaciones.findByProfesorIdOrderByCreadoEnAsc(3L)).thenReturn(List.of(
                 asignacion(500L, 3L, EstadoAsignacion.ACTIVA)));
+        com.semillero.evaluacion.anios.AnioAcademico anio =
+                new com.semillero.evaluacion.anios.AnioAcademico();
+        ReflectionTestUtils.setField(anio, "id", 5L);
+        anio.setAnio(2026);
+        anio.setEstado(com.semillero.evaluacion.anios.EstadoAnio.ACTIVO);
+        when(anios.findAllById(List.of(5L))).thenReturn(List.of(anio));
 
         mockMvc.perform(get("/api/v1/asignaciones")
                         .queryParam("profesorId", "3")
@@ -82,6 +88,7 @@ class AsignacionControllerTests extends ContextoPruebas {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].profesorId").value(3))
+                .andExpect(jsonPath("$[0].anio").value(2026))
                 .andExpect(jsonPath("$[0].estado").value("ACTIVA"));
     }
 

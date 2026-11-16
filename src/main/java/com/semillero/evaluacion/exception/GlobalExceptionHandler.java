@@ -96,6 +96,27 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
 
+    /** Conflicto con el estado del recurso (p. ej., dato unico ya ocupado). */
+    @ExceptionHandler(ConflictoEstadoException.class)
+    ResponseEntity<ApiError> manejarConflictoEstado(
+            ConflictoEstadoException ex, HttpServletRequest request) {
+        return construir(HttpStatus.CONFLICT, ex.getMessage(), request, null);
+    }
+
+    /**
+     * Argumento invalido en una regla interna (p. ej., fila de calificacion
+     * inconsistente con su asignacion). Mensaje controlado por el codigo del
+     * sistema; nunca se exponen detalles internos de Java.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ApiError> manejarArgumentoIlegal(
+            IllegalArgumentException ex, HttpServletRequest request) {
+        String mensaje = ex.getMessage() != null && !ex.getMessage().isBlank()
+                ? ex.getMessage()
+                : "Datos invalidos en la operacion";
+        return construir(HttpStatus.BAD_REQUEST, mensaje, request, null);
+    }
+
     /** Token valido pero rol insuficiente (seguridad de metodo). */
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<ApiError> manejarAccesoDenegado(
