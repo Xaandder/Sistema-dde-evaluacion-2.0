@@ -1,12 +1,17 @@
 package com.semillero.evaluacion.matriculas;
 
+import com.semillero.evaluacion.comun.PaginaRespuesta;
 import com.semillero.evaluacion.matriculas.dto.CrearMatriculaPeticion;
 import com.semillero.evaluacion.matriculas.dto.MatriculaRespuesta;
 import com.semillero.evaluacion.usuarios.Usuario;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -46,12 +51,24 @@ public class MatriculaController {
                 .body(respuesta);
     }
 
-    /** Consulta matriculas; filtros opcionales ?estudianteId= y ?anioId=. */
+    /**
+     * Consulta PAGINADA de matriculas; filtros combinables ?estudianteId= y
+     * ?anioId=.
+     *
+     * <p>Paginacion: {@code page} (indice 0-based, por defecto 0) y
+     * {@code size} (registros por pagina, por defecto 20, maximo 100).</p>
+     */
     @GetMapping
-    public List<MatriculaRespuesta> listar(
+    public PaginaRespuesta<MatriculaRespuesta> listar(
+            @Parameter(description = "Indice de pagina, 0-based")
+            @RequestParam(name = "page", defaultValue = "0") @Min(0) Integer page,
+            @Parameter(description = "Registros por pagina (1-100)")
+            @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) Integer size,
+            @Parameter(description = "Filtrar por estudiante")
             @RequestParam(name = "estudianteId", required = false) Long estudianteId,
+            @Parameter(description = "Filtrar por anio lectivo")
             @RequestParam(name = "anioId", required = false) Long anioId) {
-        return servicio.listar(estudianteId, anioId);
+        return servicio.listar(estudianteId, anioId, PageRequest.of(page, size));
     }
 
     /** Consulta una matricula por id (cualquier rol autenticado). */

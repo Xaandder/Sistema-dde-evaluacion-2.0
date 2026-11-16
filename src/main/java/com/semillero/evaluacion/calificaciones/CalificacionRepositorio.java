@@ -2,37 +2,50 @@ package com.semillero.evaluacion.calificaciones;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.PagingAndSortingRepository;
 
 /**
  * Repositorio de CALIFICACIONES. Sin DELETE: la nota se registra cuando
  * existe y se edita (NOTA/COMENTARIO); el espacio de evaluacion se comparte
  * entre co-docentes por la UNIQUE (ESTUDIANTE, MATERIA, PERIODO, NUMERO).
+ *
+ * <p>Los listados son paginados (Pageable) para no cargar toda la tabla.</p>
  */
-public interface CalificacionRepositorio extends CrudRepository<Calificacion, Long> {
+public interface CalificacionRepositorio
+        extends CrudRepository<Calificacion, Long>, PagingAndSortingRepository<Calificacion, Long> {
 
     /** Espejo Java de UNQ_CALIF_ESTUD_MATERIA_PERIODO (co-docentes comparten espacios). */
     Optional<Calificacion> findByEstudianteIdAndMateriaIdAndPeriodoIdAndNumeroEvaluacion(
             Long estudianteId, Long materiaId, Long periodoId, Integer numeroEvaluacion);
 
-    List<Calificacion> findByAsignacionIdOrderByNumeroEvaluacionAsc(Long asignacionId);
+    /** Todas las notas de un estudiante en una materia y periodo (espacios ocupados). */
+    List<Calificacion> findByEstudianteIdAndMateriaIdAndPeriodoId(
+            Long estudianteId, Long materiaId, Long periodoId);
 
-    List<Calificacion> findByEstudianteIdOrderByAnioIdAscMateriaIdAscNumeroEvaluacionAsc(
-            Long estudianteId);
+    Page<Calificacion> findByAsignacionIdOrderByNumeroEvaluacionAsc(Long asignacionId,
+            Pageable pageable);
 
-    List<Calificacion> findByEstudianteIdAndPeriodoIdOrderByMateriaIdAscNumeroEvaluacionAsc(
-            Long estudianteId, Long periodoId);
+    Page<Calificacion> findByEstudianteIdOrderByAnioIdAscMateriaIdAscNumeroEvaluacionAsc(
+            Long estudianteId, Pageable pageable);
 
-    List<Calificacion> findByMateriaIdAndPeriodoIdOrderByEstudianteIdAscNumeroEvaluacionAsc(
-            Long materiaId, Long periodoId);
+    Page<Calificacion> findByEstudianteIdAndPeriodoIdOrderByMateriaIdAscNumeroEvaluacionAsc(
+            Long estudianteId, Long periodoId, Pageable pageable);
 
-    List<Calificacion> findByMateriaIdOrderByAnioIdAscGrupoIdAscEstudianteIdAsc(Long materiaId);
+    Page<Calificacion> findByMateriaIdAndPeriodoIdOrderByEstudianteIdAscNumeroEvaluacionAsc(
+            Long materiaId, Long periodoId, Pageable pageable);
 
-    List<Calificacion> findByGrupoIdOrderByMateriaIdAscEstudianteIdAscNumeroEvaluacionAsc(
-            Long grupoId);
+    Page<Calificacion> findByMateriaIdOrderByAnioIdAscGrupoIdAscEstudianteIdAsc(Long materiaId,
+            Pageable pageable);
 
-    List<Calificacion> findByAnioIdOrderByGrupoIdAscMateriaIdAscEstudianteIdAsc(Long anioId);
+    Page<Calificacion> findByGrupoIdOrderByMateriaIdAscEstudianteIdAscNumeroEvaluacionAsc(
+            Long grupoId, Pageable pageable);
 
-    List<Calificacion> findByPeriodoIdOrderByEstudianteIdAscMateriaIdAscNumeroEvaluacionAsc(
-            Long periodoId);
+    Page<Calificacion> findByAnioIdOrderByGrupoIdAscMateriaIdAscEstudianteIdAsc(Long anioId,
+            Pageable pageable);
+
+    Page<Calificacion> findByPeriodoIdOrderByEstudianteIdAscMateriaIdAscNumeroEvaluacionAsc(
+            Long periodoId, Pageable pageable);
 }

@@ -6,6 +6,7 @@ import com.semillero.evaluacion.exception.ReglaNegocioException;
 import com.semillero.evaluacion.estudiantes.dto.ActualizarEstudiantePeticion;
 import com.semillero.evaluacion.estudiantes.dto.CrearEstudiantePeticion;
 import com.semillero.evaluacion.estudiantes.dto.EstudianteRespuesta;
+import com.semillero.evaluacion.comun.PaginaRespuesta;
 import com.semillero.evaluacion.usuarios.Rol;
 import com.semillero.evaluacion.usuarios.Usuario;
 import com.semillero.evaluacion.usuarios.UsuarioRepositorio;
@@ -13,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,15 +96,16 @@ public class EstudianteServicio {
     }
 
     /** Consulta de estudiantes; con ?estado= filtra por ACTIVO o INACTIVO. */
+    /** Consulta PAGINADA de estudiantes; con ?estado= filtra por ACTIVO o INACTIVO. */
     @Transactional(readOnly = true)
-    public List<EstudianteRespuesta> listar(String estado) {
-        List<Estudiante> filas;
-        if (estado != null) {
-            filas = repositorio.findByEstadoOrderByApellidosAscNombresAsc(estadoValido(estado));
-        } else {
-            filas = repositorio.findAllByOrderByApellidosAscNombresAsc();
-        }
-        return aRespuestas(filas);
+    public PaginaRespuesta<EstudianteRespuesta> listar(String estado, Pageable pageable) {
+        Page<Estudiante> filas = estado != null
+                ? repositorio.findByEstadoOrderByApellidosAscNombresAsc(
+                        estadoValido(estado), pageable)
+                : repositorio.findAllByOrderByApellidosAscNombresAsc(pageable);
+        return new PaginaRespuesta<>(aRespuestas(filas.getContent()),
+                filas.getNumber(), filas.getSize(), filas.getTotalElements(),
+                filas.getTotalPages());
     }
 
     /** Consulta de un estudiante por id. */

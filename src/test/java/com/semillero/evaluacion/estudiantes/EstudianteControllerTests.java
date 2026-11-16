@@ -148,7 +148,11 @@ class EstudianteControllerTests extends ContextoPruebas {
         e.setNombres("Ana");
         e.setApellidos("Gomez");
         e.setEstado(EstadoEstudiante.ACTIVO);
-        when(estudiantes.findAllByOrderByApellidosAscNombresAsc()).thenReturn(List.of(e));
+        org.springframework.data.domain.PageRequest pagina =
+                org.springframework.data.domain.PageRequest.of(0, 20);
+        when(estudiantes.findAllByOrderByApellidosAscNombresAsc(
+                org.mockito.ArgumentMatchers.any())).thenReturn(
+                new org.springframework.data.domain.PageImpl<>(List.of(e), pagina, 1));
         when(estudiantes.findById(10L)).thenReturn(Optional.of(e));
         when(usuarios.findAllById(List.of(20L))).thenReturn(List.of(cuentaEstudiante()));
         when(usuarios.findById(20L)).thenReturn(Optional.of(cuentaEstudiante()));
@@ -156,8 +160,9 @@ class EstudianteControllerTests extends ContextoPruebas {
 
         mockMvc.perform(get("/api/v1/estudiantes").header("Authorization", "Bearer " + t))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].usuario").value("est.nuevo"));
+                .andExpect(jsonPath("$.contenido.length()").value(1))
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].usuario").value("est.nuevo"));
 
         mockMvc.perform(get("/api/v1/estudiantes/10").header("Authorization", "Bearer " + t))
                 .andExpect(status().isOk())

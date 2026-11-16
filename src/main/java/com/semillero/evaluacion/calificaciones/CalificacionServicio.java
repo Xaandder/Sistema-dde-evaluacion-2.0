@@ -7,6 +7,8 @@ import com.semillero.evaluacion.auditoria.AuditoriaServicio;
 import com.semillero.evaluacion.calificaciones.dto.ActualizarCalificacionPeticion;
 import com.semillero.evaluacion.calificaciones.dto.CalificacionRespuesta;
 import com.semillero.evaluacion.calificaciones.dto.CrearCalificacionPeticion;
+import com.semillero.evaluacion.comun.PaginaRespuesta;
+import com.semillero.evaluacion.exception.ConflictoEstadoException;
 import com.semillero.evaluacion.exception.RecursoNoEncontradoException;
 import com.semillero.evaluacion.exception.ReglaNegocioException;
 import com.semillero.evaluacion.matriculas.EstadoMatricula;
@@ -21,6 +23,10 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -117,7 +123,7 @@ public class CalificacionServicio {
                 matricula.getEstudianteId(), asignacion.getMateriaId(),
                 asignacion.getPeriodoId(), peticion.numeroEvaluacion())
                 .ifPresent(ocupado -> {
-                    throw new ReglaNegocioException(
+                    throw new ConflictoEstadoException(
                             "La evaluacion " + peticion.numeroEvaluacion() + " del "
                                     + "estudiante en esta materia y periodo ya esta "
                                     + "registrada (calificacion id " + ocupado.getId() + ")");
@@ -196,47 +202,52 @@ public class CalificacionServicio {
     }
 
     /**
-     * Consulta con filtros combinables: estudianteId, asignacionId, materiaId,
-     * grupoId, anioId y periodoId. Las combinaciones se resuelven con los
-     * metodos derivados del repositorio.
+     * Consulta paginada con filtros combinables: estudianteId, asignacionId,
+     * materiaId, grupoId, anioId y periodoId. Las combinaciones se resuelven
+     * con los metodos derivados del repositorio y el conteo lo hace la base
+     * (nunca se carga toda la tabla).
      */
     @Transactional(readOnly = true)
-    public List<CalificacionRespuesta> listar(Long estudianteId, Long asignacionId,
-            Long materiaId, Long grupoId, Long anioId, Long periodoId) {
-        List<Calificacion> filas;
+    public PaginaRespuesta<CalificacionRespuesta> listar(Long estudianteId, Long asignacionId,
+            Long materiaId, Long grupoId, Long anioId, Long periodoId, Pageable pageable) {
+        Page<Calificacion> filas;
         if (estudianteId != null && periodoId != null) {
             filas = repositorio
                     .findByEstudianteIdAndPeriodoIdOrderByMateriaIdAscNumeroEvaluacionAsc(
-                            estudianteId, periodoId);
+                            estudianteId, periodoId, pageable);
         } else if (estudianteId != null) {
             filas = repositorio
                     .findByEstudianteIdOrderByAnioIdAscMateriaIdAscNumeroEvaluacionAsc(
-                            estudianteId);
+                            estudianteId, pageable);
         } else if (materiaId != null && periodoId != null) {
             filas = repositorio
                     .findByMateriaIdAndPeriodoIdOrderByEstudianteIdAscNumeroEvaluacionAsc(
-                            materiaId, periodoId);
+                            materiaId, periodoId, pageable);
         } else if (asignacionId != null) {
-            filas = repositorio.findByAsignacionIdOrderByNumeroEvaluacionAsc(asignacionId);
+            filas = repositorio.findByAsignacionIdOrderByNumeroEvaluacionAsc(asignacionId,
+                    pageable);
         } else if (materiaId != null) {
             filas = repositorio.findByMateriaIdOrderByAnioIdAscGrupoIdAscEstudianteIdAsc(
-                    materiaId);
+                    materiaId, pageable);
         } else if (grupoId != null) {
             filas = repositorio
                     .findByGrupoIdOrderByMateriaIdAscEstudianteIdAscNumeroEvaluacionAsc(
-                            grupoId);
+                            grupoId, pageable);
         } else if (anioId != null) {
             filas = repositorio.findByAnioIdOrderByGrupoIdAscMateriaIdAscEstudianteIdAsc(
-                    anioId);
+                    anioId, pageable);
         } else if (periodoId != null) {
             filas = repositorio
                     .findByPeriodoIdOrderByEstudianteIdAscMateriaIdAscNumeroEvaluacionAsc(
-                            periodoId);
+                            periodoId, pageable);
         } else {
-            filas = java.util.stream.StreamSupport
-                    .stream(repositorio.findAll().spliterator(), false).toList();
+            filas = repositorio.findAll(
+                    pageable.getSort().isSorted() ? pageable : PageRequest.of(
+                            pageable.getPageNumber(), pageable.getPageSize(),
+                            Sort.by(Sort.Direction.ASC,
+                                    "anioId", "materiaId", "estudianteId", "numeroEvaluacion")));
         }
-        return filas.stream().map(CalificacionServicio::aRespuesta).toList();
+        return PaginaRespuesta.de(filas, CalificacionServicio::aRespuesta);
     }
 
     /** Consulta una calificacion por id. */
@@ -247,7 +258,9 @@ public class CalificacionServicio {
 
     /**
      * Espacios de evaluacion libres (1..10) de un estudiante en una
-     * asignacion: los numeros sin nota registrada.
+     * asignacion: los numeros sin nota registrada. Resuelto con UNA sola
+     * consulta (todas las notas del estudiante en la materia y periodo) en
+     * lugar de diez consultas por numero.
      */
     @Transactional(readOnly = true)
     public List<Integer> pendientes(Long estudianteId, Long asignacionId) {
@@ -255,11 +268,17 @@ public class CalificacionServicio {
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe una asignacion con id " + asignacionId));
 
+        List<Integer> ocupados = repositorio
+                .findByEstudianteIdAndMateriaIdAndPeriodoId(
+                        estudianteId, asignacion.getMateriaId(), asignacion.getPeriodoId())
+                .stream()
+                .map(Calificacion::getNumeroEvaluacion)
+                .distinct()
+                .toList();
+
         List<Integer> libres = new ArrayList<>();
         for (int numero = 1; numero <= 10; numero++) {
-            if (repositorio.findByEstudianteIdAndMateriaIdAndPeriodoIdAndNumeroEvaluacion(
-                    estudianteId, asignacion.getMateriaId(), asignacion.getPeriodoId(),
-                    numero).isEmpty()) {
+            if (!ocupados.contains(numero)) {
                 libres.add(numero);
             }
         }

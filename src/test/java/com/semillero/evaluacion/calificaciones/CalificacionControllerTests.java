@@ -221,16 +221,22 @@ class CalificacionControllerTests extends ContextoPruebas {
         fila.setNumeroEvaluacion(1);
         fila.setNota(new BigDecimal("4.50"));
         fila.setRegistradoPor(31L);
+        org.springframework.data.domain.PageRequest pagina =
+                org.springframework.data.domain.PageRequest.of(0, 20);
         when(calificaciones.findByEstudianteIdOrderByAnioIdAscMateriaIdAscNumeroEvaluacionAsc(
-                40L)).thenReturn(List.of(fila));
+                eq(40L), org.mockito.ArgumentMatchers.any())).thenReturn(
+                new org.springframework.data.domain.PageImpl<>(List.of(fila), pagina, 1));
 
         String t = token(Rol.ESTUDIANTE);
         mockMvc.perform(get("/api/v1/calificaciones")
                         .queryParam("estudianteId", "40")
                         .header("Authorization", "Bearer " + t))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].estudianteId").value(40));
+                .andExpect(jsonPath("$.contenido.length()").value(1))
+                .andExpect(jsonPath("$.pagina").value(0))
+                .andExpect(jsonPath("$.tamano").value(20))
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].estudianteId").value(40));
 
         when(calificaciones.findById(99L)).thenReturn(Optional.empty());
         mockMvc.perform(get("/api/v1/calificaciones/99")
@@ -239,23 +245,76 @@ class CalificacionControllerTests extends ContextoPruebas {
     }
 
     @Test
+    @DisplayName("POST /calificaciones con espacio de evaluacion ocupado: 409 CONFLICT")
+    void crearSobreEspacioOcupado409() throws Exception {
+        when(profesores.findByUsuarioId(1L)).thenReturn(Optional.of(profesor(3L)));
+        when(asignaciones.findById(500L)).thenReturn(Optional.of(
+                asignacion(500L, 3L, EstadoAsignacion.ACTIVA)));
+        when(periodos.findById(10L)).thenReturn(Optional.of(periodo(10L, 5L,
+                EstadoPeriodo.ABIERTO)));
+        when(matriculas.findById(70L)).thenReturn(Optional.of(matricula(70L)));
+        Calificacion ocupada = new Calificacion();
+        ReflectionTestUtils.setField(ocupada, "id", 899L);
+        when(calificaciones.findByEstudianteIdAndMateriaIdAndPeriodoIdAndNumeroEvaluacion(
+                eq(40L), eq(2L), eq(10L), eq(1))).thenReturn(Optional.of(ocupada));
+
+        mockMvc.perform(post("/api/v1/calificaciones")
+                        .header("Authorization", "Bearer " + token(Rol.PROFESOR))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cuerpoValido()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.estado").value(409))
+                .andExpect(jsonPath("$.mensaje").value(
+                        "La evaluacion 1 del estudiante en esta materia y periodo ya esta "
+                                + "registrada (calificacion id 899)"));
+    }
+
+    @Test
+    @DisplayName("PUT /calificaciones/{id} con fila inconsistente con su asignacion: 400 (antes 500)")
+    void editarConFilaInconsistente400() throws Exception {
+        when(profesores.findByUsuarioId(1L)).thenReturn(Optional.of(profesor(3L)));
+        Calificacion inconsistente = new Calificacion();
+        ReflectionTestUtils.setField(inconsistente, "id", 900L);
+        inconsistente.setMatriculaId(70L);
+        inconsistente.setEstudianteId(40L);
+        inconsistente.setAsignacionId(500L);
+        inconsistente.setMateriaId(3L);
+        inconsistente.setGrupoId(6L);
+        inconsistente.setAnioId(5L);
+        inconsistente.setPeriodoId(10L);
+        inconsistente.setNumeroEvaluacion(1);
+        inconsistente.setNota(new BigDecimal("4.50"));
+        when(calificaciones.findById(900L)).thenReturn(Optional.of(inconsistente));
+        when(asignaciones.findById(500L)).thenReturn(Optional.of(
+                asignacion(500L, 3L, EstadoAsignacion.ACTIVA)));
+
+        mockMvc.perform(put("/api/v1/calificaciones/900")
+                        .header("Authorization", "Bearer " + token(Rol.PROFESOR))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nota\":4.8,\"comentario\":\"Mejorado\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.estado").value(400))
+                .andExpect(jsonPath("$.mensaje").value(
+                        "No se puede cambiar la asignación original de una calificación."));
+    }
+
+    @Test
     @DisplayName("GET /calificaciones/pendientes: espacios 1..10 libres (cualquier rol)")
     void pendientes() throws Exception {
         when(asignaciones.findById(500L)).thenReturn(Optional.of(
                 asignacion(500L, 3L, EstadoAsignacion.ACTIVA)));
-        when(calificaciones.findByEstudianteIdAndMateriaIdAndPeriodoIdAndNumeroEvaluacion(
-                eq(40L), eq(2L), eq(10L), anyInt()))
-                .thenAnswer(invocacion -> invocacion.getArgument(3, Integer.class) <= 3
-                        ? Optional.empty()
-                        : Optional.of(new Calificacion()));
+        Calificacion ocupada = new Calificacion();
+        ocupada.setNumeroEvaluacion(4);
+        when(calificaciones.findByEstudianteIdAndMateriaIdAndPeriodoId(40L, 2L, 10L))
+                .thenReturn(List.of(ocupada));
 
         mockMvc.perform(get("/api/v1/calificaciones/pendientes")
                         .queryParam("estudianteId", "40")
                         .queryParam("asignacionId", "500")
                         .header("Authorization", "Bearer " + token(Rol.ACUDIENTE)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$.length()").value(9))
                 .andExpect(jsonPath("$[0]").value(1))
-                .andExpect(jsonPath("$[2]").value(3));
+                .andExpect(jsonPath("$[8]").value(10));
     }
 }

@@ -69,19 +69,47 @@ class MatriculaControllerTests extends ContextoPruebas {
     }
 
     @Test
-    @DisplayName("GET /matriculas?estudianteId=10 filtra las matriculas del estudiante")
+    @DisplayName("GET /matriculas?estudianteId=10 filtra paginado las matriculas del estudiante")
     void listarPorEstudiante() throws Exception {
         when(anios.findById(5L)).thenReturn(Optional.empty());
-        when(matriculas.findByEstudianteIdOrderByFechaMatriculaAsc(10L)).thenReturn(List.of(
-                matricula(100L, EstadoMatricula.ACTIVA)));
+        org.springframework.data.domain.PageRequest pagina =
+                org.springframework.data.domain.PageRequest.of(0, 20);
+        when(matriculas.findByEstudianteIdOrderByFechaMatriculaAsc(
+                org.mockito.ArgumentMatchers.eq(10L),
+                org.mockito.ArgumentMatchers.any())).thenReturn(
+                new org.springframework.data.domain.PageImpl<>(
+                        List.of(matricula(100L, EstadoMatricula.ACTIVA)), pagina, 1));
 
         mockMvc.perform(get("/api/v1/matriculas")
                         .queryParam("estudianteId", "10")
                         .header("Authorization", "Bearer " + token(Rol.PROFESOR)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].estudianteId").value(10))
-                .andExpect(jsonPath("$[0].estado").value("ACTIVA"));
+                .andExpect(jsonPath("$.contenido.length()").value(1))
+                .andExpect(jsonPath("$.contenido[0].estudianteId").value(10))
+                .andExpect(jsonPath("$.contenido[0].estado").value("ACTIVA"));
+    }
+
+    @Test
+    @DisplayName("GET /matriculas con size fuera de rango: 400")
+    void paginacionInvalida() throws Exception {
+        mockMvc.perform(get("/api/v1/matriculas")
+                        .queryParam("size", "200")
+                        .header("Authorization", "Bearer " + token(Rol.ESTUDIANTE)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /matriculas sin filtros y sin datos: pagina vacia")
+    void listarVacio() throws Exception {
+        when(matriculas.findAll(org.mockito.ArgumentMatchers.any(
+                org.springframework.data.domain.Pageable.class)))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        mockMvc.perform(get("/api/v1/matriculas")
+                        .header("Authorization", "Bearer " + token(Rol.ESTUDIANTE)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido.length()").value(0))
+                .andExpect(jsonPath("$.totalElementos").value(0));
     }
 
     @Test

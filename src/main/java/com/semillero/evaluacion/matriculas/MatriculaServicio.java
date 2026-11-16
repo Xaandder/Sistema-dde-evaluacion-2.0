@@ -12,10 +12,15 @@ import com.semillero.evaluacion.estudiantes.EstudianteRepositorio;
 import com.semillero.evaluacion.grupos.EstadoGrupo;
 import com.semillero.evaluacion.grupos.Grupo;
 import com.semillero.evaluacion.grupos.GrupoRepositorio;
+import com.semillero.evaluacion.comun.PaginaRespuesta;
 import com.semillero.evaluacion.matriculas.dto.CrearMatriculaPeticion;
 import com.semillero.evaluacion.matriculas.dto.MatriculaRespuesta;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -126,26 +131,45 @@ public class MatriculaServicio {
         return aRespuesta(guardada, anio.getAnio());
     }
 
-    /** Consulta de matriculas; filtros opcionales por estudiante y/o anio. */
+    /**
+     * Consulta PAGINADA de matriculas: por estudiante, por anio, por ambos o
+     * todas. El numero del anio se resuelve cuando el filtro lo indica.
+     */
     @Transactional(readOnly = true)
-    public List<MatriculaRespuesta> listar(Long estudianteId, Long anioId) {
-        List<Matricula> filas;
+    public PaginaRespuesta<MatriculaRespuesta> listar(Long estudianteId, Long anioId,
+            Pageable pageable) {
+        Page<Matricula> filas;
         Integer numeroAnio = null;
         if (estudianteId != null && anioId != null) {
             numeroAnio = anioDe(anioId);
             filas = repositorio.findByEstudianteIdAndAnioIdOrderByFechaMatriculaAsc(
-                    estudianteId, anioId);
+                    estudianteId, anioId, pageable);
         } else if (estudianteId != null) {
-            filas = repositorio.findByEstudianteIdOrderByFechaMatriculaAsc(estudianteId);
+            filas = repositorio.findByEstudianteIdOrderByFechaMatriculaAsc(estudianteId,
+                    pageable);
         } else if (anioId != null) {
             numeroAnio = anioDe(anioId);
-            filas = repositorio.findByAnioIdOrderByEstudianteIdAsc(anioId);
+            filas = repositorio.findByAnioIdOrderByEstudianteIdAsc(anioId, pageable);
         } else {
-            filas = java.util.stream.StreamSupport
-                    .stream(repositorio.findAll().spliterator(), false).toList();
+            filas = repositorio.findAll(
+                    pageable.getSort().isSorted() ? pageable : PageRequest.of(
+                            pageable.getPageNumber(), pageable.getPageSize(),
+                            Sort.by(Sort.Direction.ASC, "anioId", "estudianteId")));
         }
         final Integer anioFinal = numeroAnio;
-        return filas.stream().map(m -> aRespuesta(m, anioFinal)).toList();
+        return PaginaRespuesta.de(filas, m -> aRespuesta(m, anioFinal));
+    }
+
+    /**
+     * Matriculas de UN estudiante (lista completa: son pocas, una por anio
+     * como maximo), para el endpoint anidado /estudiantes/{id}/matriculas.
+     */
+    @Transactional(readOnly = true)
+    public List<MatriculaRespuesta> matriculasDe(Long estudianteId) {
+        return repositorio.findAllByEstudianteIdOrderByFechaMatriculaAsc(estudianteId)
+                .stream()
+                .map(m -> aRespuesta(m, anioDe(m.getAnioId())))
+                .toList();
     }
 
     /** Consulta de una matricula por id. */

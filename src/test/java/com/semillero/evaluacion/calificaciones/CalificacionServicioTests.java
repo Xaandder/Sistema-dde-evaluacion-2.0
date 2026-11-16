@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -18,6 +19,8 @@ import com.semillero.evaluacion.auditoria.AuditoriaServicio;
 import com.semillero.evaluacion.calificaciones.dto.ActualizarCalificacionPeticion;
 import com.semillero.evaluacion.calificaciones.dto.CalificacionRespuesta;
 import com.semillero.evaluacion.calificaciones.dto.CrearCalificacionPeticion;
+import com.semillero.evaluacion.comun.PaginaRespuesta;
+import com.semillero.evaluacion.exception.ConflictoEstadoException;
 import com.semillero.evaluacion.exception.RecursoNoEncontradoException;
 import com.semillero.evaluacion.exception.ReglaNegocioException;
 import com.semillero.evaluacion.matriculas.EstadoMatricula;
@@ -35,8 +38,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Pruebas unitarias de las reglas de negocio de calificaciones, sin base de
@@ -346,46 +356,73 @@ class CalificacionServicioTests {
     }
 
     @Test
-    @DisplayName("listar: delega en el metodo derivado correcto segun los filtros")
+    @DisplayName("listar: delega en el metodo derivado paginado correcto segun los filtros")
     void listarConFiltros() {
-        List<Calificacion> fila = List.of(calificacion(900L));
+        PageRequest pagina = PageRequest.of(0, 20);
+        Page<Calificacion> fila = new PageImpl<>(List.of(calificacion(900L)), pagina, 1);
         when(repositorio.findByEstudianteIdAndPeriodoIdOrderByMateriaIdAscNumeroEvaluacionAsc(
-                40L, 10L)).thenReturn(fila);
-        assertEquals(1, servicio.listar(40L, null, null, null, null, 10L).size());
+                40L, 10L, pagina)).thenReturn(fila);
+        assertEquals(1, servicio.listar(40L, null, null, null, null, 10L, pagina)
+                .totalElementos());
 
-        when(repositorio.findByAsignacionIdOrderByNumeroEvaluacionAsc(500L)).thenReturn(fila);
-        assertEquals(1, servicio.listar(null, 500L, null, null, null, null).size());
+        when(repositorio.findByAsignacionIdOrderByNumeroEvaluacionAsc(500L, pagina))
+                .thenReturn(fila);
+        assertEquals(1, servicio.listar(null, 500L, null, null, null, null, pagina)
+                .totalElementos());
 
         when(repositorio.findByMateriaIdAndPeriodoIdOrderByEstudianteIdAscNumeroEvaluacionAsc(
-                2L, 10L)).thenReturn(fila);
-        assertEquals(1, servicio.listar(null, null, 2L, null, null, 10L).size());
+                2L, 10L, pagina)).thenReturn(fila);
+        assertEquals(1, servicio.listar(null, null, 2L, null, null, 10L, pagina)
+                .totalElementos());
 
         when(repositorio.findByGrupoIdOrderByMateriaIdAscEstudianteIdAscNumeroEvaluacionAsc(
-                6L)).thenReturn(fila);
-        assertEquals(1, servicio.listar(null, null, null, 6L, null, null).size());
+                6L, pagina)).thenReturn(fila);
+        assertEquals(1, servicio.listar(null, null, null, 6L, null, null, pagina)
+                .totalElementos());
 
-        when(repositorio.findByAnioIdOrderByGrupoIdAscMateriaIdAscEstudianteIdAsc(5L))
+        when(repositorio.findByAnioIdOrderByGrupoIdAscMateriaIdAscEstudianteIdAsc(5L, pagina))
                 .thenReturn(fila);
-        assertEquals(1, servicio.listar(null, null, null, null, 5L, null).size());
+        assertEquals(1, servicio.listar(null, null, null, null, 5L, null, pagina)
+                .totalElementos());
 
-        when(repositorio.findAll()).thenReturn(fila);
-        assertEquals(1, servicio.listar(null, null, null, null, null, null).size());
+        when(repositorio.findAll(any(Pageable.class))).thenReturn(fila);
+        PaginaRespuesta<CalificacionRespuesta> todas = servicio
+                .listar(null, null, null, null, null, null, pagina);
+        assertEquals(1, todas.totalElementos());
+        assertEquals(1, todas.contenido().size());
+        assertEquals(900L, todas.contenido().get(0).id());
     }
 
     @Test
-    @DisplayName("pendientes: numeros 1..10 sin nota; ocupados se excluyen")
+    @DisplayName("listar: pagina fuera de rango devuelve contenido vacio con metadata correcta")
+    void listarPaginaVacia() {
+        PageRequest pagina = PageRequest.of(3, 20);
+        when(repositorio.findAll(any(Pageable.class)))
+                .thenReturn(Page.empty(pagina));
+        PaginaRespuesta<CalificacionRespuesta> respuesta = servicio
+                .listar(null, null, null, null, null, null, pagina);
+        assertTrue(respuesta.contenido().isEmpty());
+        assertEquals(3, respuesta.pagina());
+        assertEquals(20, respuesta.tamano());
+        assertEquals(0, respuesta.totalElementos());
+    }
+
+    @Test
+    @DisplayName("pendientes: numeros 1..10 sin nota; ocupados se excluyen (UNA sola consulta)")
     void pendientesDelEstudiante() {
         prepararValidos();
-        when(repositorio.findByEstudianteIdAndMateriaIdAndPeriodoIdAndNumeroEvaluacion(
-                eq(40L), eq(2L), eq(10L), anyInt()))
-                .thenAnswer(inv -> inv.getArgument(3, Integer.class) == 3
-                        ? Optional.of(calificacion(900L))
-                        : Optional.empty());
+        when(repositorio.findByEstudianteIdAndMateriaIdAndPeriodoId(40L, 2L, 10L))
+                .thenReturn(List.of(calificacion(900L))); // numeroEvaluacion 3
 
         List<Integer> libres = servicio.pendientes(40L, 500L);
 
         assertEquals(9, libres.size());
         assertEquals(List.of(1, 2, 4, 5, 6, 7, 8, 9, 10), libres);
+        verify(repositorio, Mockito.times(1))
+                .findByEstudianteIdAndMateriaIdAndPeriodoId(40L, 2L, 10L);
+        verify(repositorio, never())
+                .findByEstudianteIdAndMateriaIdAndPeriodoIdAndNumeroEvaluacion(
+                        anyLong(), anyLong(), anyLong(), anyInt());
     }
 
     @Test

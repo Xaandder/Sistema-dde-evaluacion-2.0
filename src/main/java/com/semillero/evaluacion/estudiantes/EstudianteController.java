@@ -1,15 +1,20 @@
 package com.semillero.evaluacion.estudiantes;
 
+import com.semillero.evaluacion.comun.PaginaRespuesta;
 import com.semillero.evaluacion.estudiantes.dto.ActualizarEstudiantePeticion;
 import com.semillero.evaluacion.estudiantes.dto.CrearEstudiantePeticion;
 import com.semillero.evaluacion.estudiantes.dto.EstudianteRespuesta;
 import com.semillero.evaluacion.matriculas.MatriculaServicio;
 import com.semillero.evaluacion.matriculas.dto.MatriculaRespuesta;
 import com.semillero.evaluacion.usuarios.Usuario;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -53,11 +58,22 @@ public class EstudianteController {
                 .body(respuesta);
     }
 
-    /** Consulta estudiantes; con ?estado= filtra por ACTIVO o INACTIVO. */
+    /**
+     * Consulta PAGINADA de estudiantes; con ?estado= filtra por ACTIVO o
+     * INACTIVO.
+     *
+     * <p>Paginacion: {@code page} (indice 0-based, por defecto 0) y
+     * {@code size} (registros por pagina, por defecto 20, maximo 100).</p>
+     */
     @GetMapping
-    public List<EstudianteRespuesta> listar(
+    public PaginaRespuesta<EstudianteRespuesta> listar(
+            @Parameter(description = "Indice de pagina, 0-based")
+            @RequestParam(name = "page", defaultValue = "0") @Min(0) Integer page,
+            @Parameter(description = "Registros por pagina (1-100)")
+            @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) Integer size,
+            @Parameter(description = "Filtrar por estado del estudiante (ACTIVO/INACTIVO)")
             @RequestParam(name = "estado", required = false) String estado) {
-        return servicio.listar(estado);
+        return servicio.listar(estado, PageRequest.of(page, size));
     }
 
     /** Consulta un estudiante por id (cualquier rol autenticado). */
@@ -69,7 +85,7 @@ public class EstudianteController {
     /** Consulta las matriculas de un estudiante (cualquier rol autenticado). */
     @GetMapping("/{id}/matriculas")
     public List<MatriculaRespuesta> matriculasDelEstudiante(@PathVariable Long id) {
-        return matriculas.listar(id, null);
+        return matriculas.matriculasDe(id);
     }
 
     /** Actualiza los datos personales (solo ADMINISTRADOR). */
