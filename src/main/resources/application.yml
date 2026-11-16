@@ -8,6 +8,16 @@ spring:
     name: sistema-evaluacion
 
   # -------------------------------------------------------------------
+  # La autenticacion es 100% JWT (JwtAuthenticationFilter + UsuarioRepositorio):
+  # no existe ni se usa un UserDetailsService. Se excluye la
+  # autoconfiguracion de Spring Boot que crea un InMemoryUserDetailsManager
+  # solo para generar una contrasena aleatoria de consola (advertencia
+  # "generated security password"); nada del proyecto depende de ella.
+  # -------------------------------------------------------------------
+  autoconfigure:
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+
+  # -------------------------------------------------------------------
   # Base de datos Oracle 26ai Free (Etapa 2)
   # Los valores REALES se toman de variables de entorno (DB_URL,
   # DB_USER, DB_PASSWORD) o del archivo application-local.yml (perfil
@@ -18,13 +28,26 @@ spring:
     username: ${DB_USER:}
     password: ${DB_PASSWORD:}
     driver-class-name: oracle.jdbc.OracleDriver
+    # defaultRowPrefetch: tamaño de lectura POR DEFECTO del driver Oracle
+    # (10). Con 100 el driver trae 100 filas por viaje de red (el reporte de
+    # Hibernate lee este valor de los metadatos del driver). Hikari lo pasa
+    # como propiedad de conexion; no agrega dependencias.
+    hikari:
+      data-source-properties:
+        defaultRowPrefetch: 100
 
   # JPA en modo "validate": Hibernate solo VERIFICA contra la base;
   # NUNCA crea ni modifica tablas (Etapa 2-final, regla del proyecto).
+  # fetch_size=100: lecturas por lotes (evita la advertencia "Low default
+  # JDBC fetch size: 10" y reduce los viajes a red en los listados paginados).
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          fetch_size: 100
 
   # No mostrar campos nulos en las respuestas JSON
   jackson:
